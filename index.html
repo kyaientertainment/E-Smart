@@ -17,8 +17,7 @@
 
   <style>
     body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; }
-    /* Memastikan tombol di layar HP nyaman disentuh (Touch-friendly) */
-    button, input, select { touch-action: manipulation; }
+    button, input, select, textarea { touch-action: manipulation; }
   </style>
 </head>
 <body class="bg-slate-50 min-h-screen text-slate-800 flex flex-col justify-between">
@@ -34,7 +33,7 @@
         </div>
       </div>
       
-      <!-- User Info & Logout (Tampil Saat Auth Logged In) -->
+      <!-- User Info & Logout -->
       <div id="userInfoHeader" class="hidden flex items-center space-x-2 flex-shrink-0">
         <div class="text-right text-xs md:text-sm">
           <p id="userEmailText" class="font-semibold max-w-[120px] sm:max-w-none truncate"></p>
@@ -98,7 +97,6 @@
 
     <!-- 2. HALAMAN GURU -->
     <section id="pageGuru" class="hidden space-y-6">
-      <!-- Title -->
       <div class="bg-gradient-to-r from-teal-700 to-teal-600 text-white p-5 rounded-2xl shadow-md">
         <h2 class="text-lg md:text-xl font-bold">Input Hafalan Numerasi Siswa</h2>
         <p class="text-xs text-teal-100">Pilih kelas & siswa untuk mencatat setoran hari ini</p>
@@ -144,6 +142,26 @@
           <select id="selectMateriGuru" disabled class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm bg-slate-50">
             <option value="">-- Pilih Siswa Terlebih Dahulu --</option>
           </select>
+        </div>
+
+        <!-- FITUR BARU: TABEL PANDUAN SOAL GURU -->
+        <div id="boxPanduanSoal" class="hidden border border-emerald-200 rounded-xl overflow-hidden bg-emerald-50/30">
+          <div class="bg-emerald-100/60 px-4 py-2.5 flex items-center gap-2 border-b border-emerald-200">
+            <span class="text-emerald-800 font-bold text-xs md:text-sm">📖 Daftar Panduan Soal</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-700">
+              <thead class="bg-emerald-100/30 text-emerald-900 font-semibold border-b border-emerald-100">
+                <tr>
+                  <th class="p-3 w-1/2">Soal / Pertanyaan</th>
+                  <th class="p-3 w-1/2">Jawaban</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyPanduanSoal" class="divide-y divide-emerald-100/50 bg-white">
+                <!-- Loaded dynamically -->
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <!-- Action Buttons -->
@@ -242,6 +260,7 @@
                 <th class="p-3">Kelas</th>
                 <th class="p-3">Urutan</th>
                 <th class="p-3">Nama Materi</th>
+                <th class="p-3">Jml Panduan Soal</th>
                 <th class="p-3 text-center">Aksi</th>
               </tr>
             </thead>
@@ -326,7 +345,6 @@
       deleteDoc, 
       query, 
       where, 
-      orderBy,
       writeBatch 
     } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
@@ -340,15 +358,12 @@
       appId: "1:81292236702:web:ae27fdbad67464867ce88f"
     };
 
-    // Inisialisasi Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Set Local Persistence secara eksplisit agar login tetap bertahan meski browser HP ditutup
     setPersistence(auth, browserLocalPersistence).catch(console.error);
 
-    // Daftar 12 Kelas Spesifik Lembaga
     const DAFTAR_KELAS = [
       "1 Abu Bakar", "1 Umar bin Khattab", 
       "2 Usman bin Affan", "2 Ali bin Abi Thalib", 
@@ -358,12 +373,10 @@
       "6 Imam Ghazali", "6 Imam Junaidi"
     ];
 
-    // Global State Variable
     let currentUserRole = "guru";
     let selectedStudentData = null;
     let currentMateriList = [];
 
-    // --- DOM Elements ---
     const loadingApp = document.getElementById('loadingApp');
     const pageLogin = document.getElementById('pageLogin');
     const pageGuru = document.getElementById('pageGuru');
@@ -372,16 +385,12 @@
     const userEmailText = document.getElementById('userEmailText');
     const userRoleBadge = document.getElementById('userRoleBadge');
 
-    // --- INITIALIZATION ---
     window.addEventListener('DOMContentLoaded', async () => {
-      // Set Tanggal Hari ini
       const today = new Date().toISOString().split('T')[0];
       document.getElementById('inputTanggal').value = today;
 
-      // Populate Dropdown Kelas
       populateKelasDropdowns();
 
-      // Tangkap Hasil Redirect Google (Jika metode redirect terpicu)
       try {
         const result = await getRedirectResult(auth);
         if (result) {
@@ -392,7 +401,6 @@
       }
     });
 
-    // Populate Dropdown Kelas
     function populateKelasDropdowns() {
       const selectElements = [
         document.getElementById('selectKelasGuru'),
@@ -412,14 +420,11 @@
       });
     }
 
-    // --- AUTHENTICATION STATE OBSERVER ---
     onAuthStateChanged(auth, (user) => {
       loadingApp.classList.add('hidden');
       if (user) {
-        // Tentukan Role berdasarkan Email (Jika email mengandung "admin")
         currentUserRole = user.email.toLowerCase().includes('admin') ? 'admin' : 'guru';
         
-        // Update Header UI
         userInfoHeader.classList.remove('hidden');
         userInfoHeader.classList.add('flex');
         userEmailText.textContent = user.email;
@@ -436,7 +441,6 @@
           pageGuru.classList.remove('hidden');
         }
       } else {
-        // Logged Out
         userInfoHeader.classList.add('hidden');
         userInfoHeader.classList.remove('flex');
         pageLogin.classList.remove('hidden');
@@ -445,7 +449,6 @@
       }
     });
 
-    // Login Form Submit (Email / Password)
     document.getElementById('formLogin').addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = document.getElementById('loginEmail').value;
@@ -460,17 +463,14 @@
       }
     });
 
-    // Login Google (Penanganan Kompatibel HP: Popup dengan Fallback ke Redirect)
     document.getElementById('btnGoogleLogin').addEventListener('click', async () => {
       const provider = new GoogleAuthProvider();
       Swal.fire({ title: 'Menghubungkan ke Google...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
       
       try {
-        // Coba metode Popup terlebih dahulu (Paling responsif)
         await signInWithPopup(auth, provider);
         Swal.close();
       } catch (error) {
-        // Jika Popup diblokir oleh browser HP, otomatis alihkan ke Redirect
         if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
           try {
             await signInWithRedirect(auth, provider);
@@ -483,7 +483,6 @@
       }
     });
 
-    // Logout Button
     document.getElementById('btnLogout').addEventListener('click', async () => {
       const result = await Swal.fire({
         title: 'Konfirmasi Keluar',
@@ -500,29 +499,27 @@
 
     // --- LOGIKA HALAMAN GURU ---
 
-    // 1. Ganti Kelas -> Load Siswa Terfilter
     document.getElementById('selectKelasGuru').addEventListener('change', async (e) => {
       const kelas = e.target.value;
       const selectSiswa = document.getElementById('selectSiswaGuru');
       const selectMateri = document.getElementById('selectMateriGuru');
       const cardInfo = document.getElementById('cardInfoHafalan');
+      const boxPanduan = document.getElementById('boxPanduanSoal');
       
       selectSiswa.innerHTML = '<option value="">-- Memuat Siswa... --</option>';
       selectSiswa.disabled = true;
       selectMateri.disabled = true;
       cardInfo.classList.add('hidden');
+      boxPanduan.classList.add('hidden');
       resetEvaluasiButtons();
 
       if (!kelas) return;
 
       try {
-        // Fetch Siswa
         const qSiswa = query(collection(db, "students"), where("kelas", "==", kelas));
         const snapSiswa = await getDocs(qSiswa);
         let listSiswa = [];
         snapSiswa.forEach(d => listSiswa.push({ id: d.id, ...d.data() }));
-        
-        // Sort Alfabetis
         listSiswa.sort((a,b) => a.nama.localeCompare(b.nama));
 
         selectSiswa.innerHTML = '<option value="">-- Pilih Nama Siswa --</option>';
@@ -531,7 +528,6 @@
         });
         selectSiswa.disabled = false;
 
-        // Fetch Materi Kelas Tersebut
         const qMateri = query(collection(db, "materi_list"), where("kelas", "==", kelas));
         const snapMateri = await getDocs(qMateri);
         currentMateriList = [];
@@ -544,15 +540,16 @@
       }
     });
 
-    // 2. Ganti Siswa -> Tampilkan Rekomendasi Target & Load Materi
     document.getElementById('selectSiswaGuru').addEventListener('change', (e) => {
       const select = e.target;
       const selectedOption = select.options[select.selectedIndex];
       const selectMateri = document.getElementById('selectMateriGuru');
       const cardInfo = document.getElementById('cardInfoHafalan');
+      const boxPanduan = document.getElementById('boxPanduanSoal');
 
       if (!select.value) {
         cardInfo.classList.add('hidden');
+        boxPanduan.classList.add('hidden');
         selectMateri.disabled = true;
         resetEvaluasiButtons();
         return;
@@ -564,7 +561,6 @@
       
       selectedStudentData = { id: select.value, nama, hafalanTerakhir, statusTerakhir };
 
-      // Render Card Info
       document.getElementById('textHafalanTerakhir').textContent = hafalanTerakhir;
       const badgeStatus = document.getElementById('badgeStatusTerakhir');
       badgeStatus.textContent = statusTerakhir;
@@ -576,18 +572,15 @@
         badgeStatus.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600";
       }
 
-      // Hitung Rekomendasi Target
       let targetRekomendasi = "";
       let targetMateriObj = null;
 
       if (currentMateriList.length === 0) {
         targetRekomendasi = "Belum Ada Data Materi di Kelas Ini";
       } else if (!hafalanTerakhir || hafalanTerakhir === 'Belum Ada' || statusTerakhir === 'Tidak Lancar') {
-        // Jika belum ada / tidak lancar, tawarkan materi terendah / materi sama
         targetMateriObj = currentMateriList.find(m => m.nama_materi === hafalanTerakhir) || currentMateriList[0];
         targetRekomendasi = targetMateriObj ? targetMateriObj.nama_materi : currentMateriList[0].nama_materi;
       } else {
-        // Jika Lancar -> Cari Urutan Berikutnya
         const lastIdx = currentMateriList.findIndex(m => m.nama_materi === hafalanTerakhir);
         if (lastIdx !== -1 && lastIdx + 1 < currentMateriList.length) {
           targetMateriObj = currentMateriList[lastIdx + 1];
@@ -603,7 +596,6 @@
       document.getElementById('textRekomendasiTarget').textContent = targetRekomendasi;
       cardInfo.classList.remove('hidden');
 
-      // Populate Dropdown Materi
       selectMateri.innerHTML = '<option value="">-- Pilih Materi Setoran --</option>';
       currentMateriList.forEach(m => {
         const isSelected = (targetMateriObj && m.nama_materi === targetMateriObj.nama_materi) ? 'selected' : '';
@@ -611,9 +603,40 @@
       });
       selectMateri.disabled = false;
 
-      // Enable Tombol Evaluasi
+      // Trigger pemuatan panduan soal untuk materi rekomendasi
+      selectMateri.dispatchEvent(new Event('change'));
+
       document.getElementById('btnEvaluasiLancar').disabled = false;
       document.getElementById('btnEvaluasiUlang').disabled = false;
+    });
+
+    // EVENT GANTI MATERI -> TAMPILKAN PANDUAN SOAL DARI FIRESTORE
+    document.getElementById('selectMateriGuru').addEventListener('change', (e) => {
+      const namaMateri = e.target.value;
+      const boxPanduan = document.getElementById('boxPanduanSoal');
+      const tbodyPanduan = document.getElementById('tbodyPanduanSoal');
+
+      if (!namaMateri) {
+        boxPanduan.classList.add('hidden');
+        return;
+      }
+
+      const materiObj = currentMateriList.find(m => m.nama_materi === namaMateri);
+      
+      if (materiObj && materiObj.panduan_soal && materiObj.panduan_soal.length > 0) {
+        tbodyPanduan.innerHTML = '';
+        materiObj.panduan_soal.forEach(item => {
+          tbodyPanduan.innerHTML += `
+            <tr class="hover:bg-emerald-50/50">
+              <td class="p-3 font-semibold text-slate-800">${item.soal}</td>
+              <td class="p-3 text-slate-600 font-medium">${item.jawaban}</td>
+            </tr>
+          `;
+        });
+        boxPanduan.classList.remove('hidden');
+      } else {
+        boxPanduan.classList.add('hidden');
+      }
     });
 
     function resetEvaluasiButtons() {
@@ -621,7 +644,6 @@
       document.getElementById('btnEvaluasiUlang').disabled = true;
     }
 
-    // SIMPAN EVALUASI HAFALAN (Dengan Proteksi Anti-Duplicate)
     async function simpanEvaluasi(statusEvaluasi) {
       const tanggal = document.getElementById('inputTanggal').value;
       const kelas = document.getElementById('selectKelasGuru').value;
@@ -636,7 +658,6 @@
       Swal.fire({ title: 'Menyimpan Data...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
       try {
-        // Cek Anti Dobel Input Hari Ini
         const qCek = query(
           collection(db, "hafalan_records"),
           where("tanggal", "==", tanggal),
@@ -654,7 +675,6 @@
           return;
         }
 
-        // 1. Simpan ke Collection `hafalan_records`
         await addDoc(collection(db, "hafalan_records"), {
           tanggal,
           kelas,
@@ -663,7 +683,6 @@
           status_evaluasi: statusEvaluasi
         });
 
-        // 2. Update status terakhir di Collection `students`
         const refStudent = doc(db, "students", selectedStudentData.id);
         await updateDoc(refStudent, {
           hafalan_terakhir: materiHafalan,
@@ -678,7 +697,6 @@
           showConfirmButton: false
         });
 
-        // Reset Dropdown Siswa
         document.getElementById('selectKelasGuru').dispatchEvent(new Event('change'));
 
       } catch (err) {
@@ -713,13 +731,11 @@
           return;
         }
 
-        // Urutkan Tanggal Descending
         records.sort((a,b) => b.tanggal.localeCompare(a.tanggal));
 
         const { jsPDF } = window.jspdf;
         const docPDF = new jsPDF();
 
-        // Header Dokumen PDF
         docPDF.setFontSize(14);
         docPDF.text("LAPORAN HAFALAN NUMERASI SISWA", 14, 15);
         docPDF.setFontSize(10);
@@ -755,7 +771,6 @@
 
     // --- LOGIKA HALAMAN ADMINISTRATOR ---
 
-    // Tab Navigation
     const tabBtns = [
       { btn: document.getElementById('tabBtnSiswa'), content: document.getElementById('tabContentSiswa') },
       { btn: document.getElementById('tabBtnMateri'), content: document.getElementById('tabContentMateri') },
@@ -777,7 +792,7 @@
       });
     });
 
-    // 1. DATA SISWA MANAGEMENT
+    // DATA SISWA MANAGEMENT
     async function loadAdminDataSiswa() {
       const tbody = document.getElementById('tbodyAdminSiswa');
       tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center">Memuat Data...</td></tr>';
@@ -811,7 +826,6 @@
       }
     }
 
-    // Tambah Siswa Manual
     document.getElementById('btnModalTambahSiswa').addEventListener('click', async () => {
       let optionsKelasHTML = DAFTAR_KELAS.map(k => `<option value="${k}">${k}</option>`).join('');
 
@@ -846,7 +860,6 @@
       }
     });
 
-    // Hapus Siswa global function
     window.hapusSiswa = async (id, nama) => {
       const res = await Swal.fire({
         title: 'Konfirmasi Hapus',
@@ -861,7 +874,6 @@
       }
     };
 
-    // Import Excel Siswa
     document.getElementById('btnTriggerExcelSiswa').addEventListener('click', () => document.getElementById('fileExcelSiswa').click());
     document.getElementById('fileExcelSiswa').addEventListener('change', (e) => {
       const file = e.target.files[0];
@@ -913,10 +925,10 @@
       reader.readAsArrayBuffer(file);
     });
 
-    // 2. MATERI HAFALAN MANAGEMENT
+    // MATERI HAFALAN MANAGEMENT WITH PANDUAN SOAL
     async function loadAdminDataMateri() {
       const tbody = document.getElementById('tbodyAdminMateri');
-      tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center">Memuat Data...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center">Memuat Data...</td></tr>';
 
       try {
         const snap = await getDocs(collection(db, "materi_list"));
@@ -925,17 +937,19 @@
         list.sort((a,b) => a.kelas.localeCompare(b.kelas) || Number(a.urutan) - Number(b.urutan));
 
         if (list.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center">Data materi masih kosong.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center">Data materi masih kosong.</td></tr>';
           return;
         }
 
         tbody.innerHTML = '';
         list.forEach(m => {
+          const jmlSoal = m.panduan_soal ? m.panduan_soal.length : 0;
           tbody.innerHTML += `
             <tr class="hover:bg-slate-50">
               <td class="p-3 font-medium">${m.kelas}</td>
               <td class="p-3">${m.urutan}</td>
               <td class="p-3 font-semibold text-slate-800">${m.nama_materi}</td>
+              <td class="p-3 font-bold text-teal-700">${jmlSoal} Soal</td>
               <td class="p-3 text-center">
                 <button onclick="hapusMateri('${m.id}', '${m.nama_materi}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px]">Hapus</button>
               </td>
@@ -947,16 +961,36 @@
       }
     }
 
-    // Tambah Materi Manual
+    // Tambah Materi Manual (Ada Input Soal & Jawaban)
     document.getElementById('btnModalTambahMateri').addEventListener('click', async () => {
       let optionsKelasHTML = DAFTAR_KELAS.map(k => `<option value="${k}">${k}</option>`).join('');
 
       const { value: formValues } = await Swal.fire({
         title: 'Tambah Materi Manual',
+        width: '600px',
         html: `
-          <select id="swalKelasMateri" class="swal2-input">${optionsKelasHTML}</select>
-          <input id="swalNamaMateri" class="swal2-input" placeholder="Nama Materi Hafalan">
-          <input type="number" id="swalUrutanMateri" class="swal2-input" placeholder="Angka Urutan (1, 2, 3...)">
+          <div class="space-y-3 text-left">
+            <div>
+              <label class="text-xs font-bold text-slate-600">PILIH KELAS</label>
+              <select id="swalKelasMateri" class="swal2-input !m-0 !w-full">${optionsKelasHTML}</select>
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-600">NAMA MATERI</label>
+              <input id="swalNamaMateri" class="swal2-input !m-0 !w-full" placeholder="Contoh: Pengurangan 1-10">
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-600">URUTAN MATERI</label>
+              <input type="number" id="swalUrutanMateri" class="swal2-input !m-0 !w-full" placeholder="Angka Urutan (1, 2, 3...)">
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-600">PANDUAN SOAL (Satu Soal per Baris)</label>
+              <textarea id="swalSoalList" class="swal2-textarea !m-0 !w-full text-xs" rows="4" placeholder="3 - 2&#10;4 - 2&#10;5 - 2"></textarea>
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-600">PANDUAN JAWABAN (Satu Jawaban per Baris, Urut dengan Soal)</label>
+              <textarea id="swalJawabanList" class="swal2-textarea !m-0 !w-full text-xs" rows="4" placeholder="1&#10;2&#10;3"></textarea>
+            </div>
+          </div>
         `,
         focusConfirm: false,
         showCancelButton: true,
@@ -965,21 +999,36 @@
           const kelas = document.getElementById('swalKelasMateri').value;
           const nama_materi = document.getElementById('swalNamaMateri').value;
           const urutan = document.getElementById('swalUrutanMateri').value;
+          const soalRaw = document.getElementById('swalSoalList').value;
+          const jawabanRaw = document.getElementById('swalJawabanList').value;
+
           if (!kelas || !nama_materi || !urutan) {
-            Swal.showValidationMessage('Seluruh kolom wajib diisi!');
+            Swal.showValidationMessage('Kelas, Nama Materi, dan Urutan Wajib Diisi!');
+            return false;
           }
-          return { kelas, nama_materi, urutan: Number(urutan) };
+
+          const arraySoal = soalRaw.split('\n').map(s => s.trim()).filter(s => s !== '');
+          const arrayJawaban = jawabanRaw.split('\n').map(j => j.trim()).filter(j => j !== '');
+
+          let panduan_soal = [];
+          for (let i = 0; i < arraySoal.length; i++) {
+            panduan_soal.push({
+              soal: arraySoal[i],
+              jawaban: arrayJawaban[i] || '-'
+            });
+          }
+
+          return { kelas, nama_materi, urutan: Number(urutan), panduan_soal };
         }
       });
 
       if (formValues) {
         await addDoc(collection(db, "materi_list"), formValues);
-        Swal.fire('Berhasil', 'Materi ditambahkan.', 'success');
+        Swal.fire('Berhasil', 'Materi & Panduan Soal ditambahkan.', 'success');
         loadAdminDataMateri();
       }
     });
 
-    // Hapus Materi Global Function
     window.hapusMateri = async (id, nama) => {
       const res = await Swal.fire({
         title: 'Konfirmasi Hapus',
@@ -994,7 +1043,7 @@
       }
     };
 
-    // Import Excel Materi
+    // Import Excel Materi (Dukungan Kolom Soal & Jawaban)
     document.getElementById('btnTriggerExcelMateri').addEventListener('click', () => document.getElementById('fileExcelMateri').click());
     document.getElementById('fileExcelMateri').addEventListener('change', (e) => {
       const file = e.target.files[0];
@@ -1022,13 +1071,27 @@
             const nama_materi = row['Nama Materi'] || row['NAMA MATERI'] || row['nama_materi'];
             const kelas = row['Kelas'] || row['KELAS'] || row['kelas'];
             const urutan = row['Urutan'] || row['URUTAN'] || row['urutan'];
+            const soalStr = row['Soal'] || row['SOAL'] || row['soal'] || '';
+            const jawabanStr = row['Jawaban'] || row['JAWABAN'] || row['jawaban'] || '';
 
             if (nama_materi && kelas && urutan !== undefined) {
+              const arraySoal = String(soalStr).split(';').map(s => s.trim()).filter(s => s !== '');
+              const arrayJawaban = String(jawabanStr).split(';').map(j => j.trim()).filter(j => j !== '');
+
+              let panduan_soal = [];
+              for (let i = 0; i < arraySoal.length; i++) {
+                panduan_soal.push({
+                  soal: arraySoal[i],
+                  jawaban: arrayJawaban[i] || '-'
+                });
+              }
+
               const ref = doc(collection(db, "materi_list"));
               batch.set(ref, {
                 nama_materi: String(nama_materi).trim(),
                 kelas: String(kelas).trim(),
-                urutan: Number(urutan)
+                urutan: Number(urutan),
+                panduan_soal: panduan_soal
               });
               count++;
             }
@@ -1040,14 +1103,14 @@
 
         } catch (err) {
           console.error(err);
-          Swal.fire('Error Import', 'Gagal memproses file. Header wajib: Nama Materi, Kelas, Urutan', 'error');
+          Swal.fire('Error Import', 'Gagal memproses file. Header wajib: Nama Materi, Kelas, Urutan, Soal, Jawaban', 'error');
         }
       };
-      reader.readAsBuffer(file);
+      reader.readAsArrayBuffer(file);
     });
 
 
-    // 3. REKAPITULASI & EKSPOR ADMIN
+    // REKAPITULASI & EKSPOR ADMIN
     async function loadAdminRekap() {
       const tbody = document.getElementById('tbodyAdminRekap');
       const kelas = document.getElementById('filterAdminKelas').value;
@@ -1096,7 +1159,6 @@
     document.getElementById('filterAdminKelas').addEventListener('change', loadAdminRekap);
     document.getElementById('filterAdminTanggal').addEventListener('change', loadAdminRekap);
 
-    // Ekspor Excel Admin
     document.getElementById('btnAdminExportExcel').addEventListener('click', async () => {
       const kelas = document.getElementById('filterAdminKelas').value;
       const tanggal = document.getElementById('filterAdminTanggal').value;
@@ -1132,7 +1194,6 @@
       XLSX.writeFile(workbook, `Rekap_Hafalan_E-Smart_${new Date().toISOString().split('T')[0]}.xlsx`);
     });
 
-    // Ekspor PDF Admin
     document.getElementById('btnAdminExportPDF').addEventListener('click', async () => {
       const kelas = document.getElementById('filterAdminKelas').value;
       const tanggal = document.getElementById('filterAdminTanggal').value;
