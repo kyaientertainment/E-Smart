@@ -710,7 +710,7 @@
     document.getElementById('btnEvaluasiLancar').addEventListener('click', () => simpanEvaluasi('Lancar'));
     document.getElementById('btnEvaluasiUlang').addEventListener('click', () => simpanEvaluasi('Tidak Lancar'));
 
-    // CETAK LAPORAN PDF (GURU) - KOP RATA TENGAH & FOOTER RESMI
+    // CETAK LAPORAN PDF (GURU) - STATUS DIUBAH MENJADI LANJUT / ULANG
     document.getElementById('btnGuruCetakPDF').addEventListener('click', async () => {
       const kelas = document.getElementById('filterGuruKelas').value;
       const tanggal = document.getElementById('filterGuruTanggal').value;
@@ -740,14 +740,14 @@
         const pageWidth = docPDF.internal.pageSize.getWidth();
         const pageHeight = docPDF.internal.pageSize.getHeight();
 
-        // 1. KOP SURAT RATA TENGAH (CENTER ALIGNED)
+        // 1. KOP SURAT RATA TENGAH
         docPDF.setFont("helvetica", "bold");
         docPDF.setFontSize(14);
-        docPDF.setTextColor(15, 118, 110); // Warna Hijau Teal
+        docPDF.setTextColor(15, 118, 110);
         docPDF.text("E Smart - Monitoring Numerasi Siswa", pageWidth / 2, 15, { align: "center" });
 
         docPDF.setFontSize(12);
-        docPDF.setTextColor(0, 0, 0); // Warna Hitam
+        docPDF.setTextColor(0, 0, 0);
         docPDF.text("MI Salafiyah Wareng", pageWidth / 2, 22, { align: "center" });
 
         docPDF.setFont("helvetica", "normal");
@@ -755,29 +755,27 @@
         const strKelasHariTanggal = `Kelas: ${kelas || 'Semua Kelas'} | Hari / Tanggal: ${tanggal || 'Semua Tanggal'}`;
         docPDF.text(strKelasHariTanggal, pageWidth / 2, 28, { align: "center" });
 
-        // Garis Pembatas Kop Surat
         docPDF.setLineWidth(0.5);
         docPDF.setDrawColor(15, 118, 110);
         docPDF.line(14, 32, pageWidth - 14, 32);
 
-        // 2. TABEL DATA
+        // 2. TABEL DATA (Keterangan diubah menjadi Lanjut / Ulang)
         const tableBody = records.map((r, i) => [
           i + 1,
           r.tanggal,
           r.kelas,
           r.nama_siswa,
           r.materi_hafalan,
-          r.status_evaluasi
+          r.status_evaluasi === 'Lancar' ? 'Lanjut' : 'Ulang'
         ]);
 
         docPDF.autoTable({
           startY: 36,
-          head: [['No', 'Tanggal', 'Kelas', 'Nama Siswa', 'Materi Hafalan', 'Status']],
+          head: [['No', 'Tanggal', 'Kelas', 'Nama Siswa', 'Materi Hafalan', 'Keterangan']],
           body: tableBody,
           theme: 'striped',
           headStyles: { fillColor: [15, 118, 110], halign: 'center' },
           didDrawPage: (data) => {
-            // FOOTER RESMI DI SETIAP HALAMAN
             docPDF.setFontSize(8);
             docPDF.setTextColor(100, 116, 139);
             docPDF.text("Dokumen Resmi E-Smart MI Salafiyah Wareng - Diunduh Otomatis", 14, pageHeight - 10);
@@ -818,7 +816,7 @@
       });
     });
 
-    // 1. DATA SISWA MANAGEMENT (CRUD COMPLETE)
+    // 1. DATA SISWA MANAGEMENT
     async function loadAdminDataSiswa() {
       const tbody = document.getElementById('tbodyAdminSiswa');
       tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center">Memuat Data...</td></tr>';
@@ -836,7 +834,6 @@
 
         tbody.innerHTML = '';
         list.forEach(s => {
-          const sJson = JSON.stringify(s).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
           tbody.innerHTML += `
             <tr class="hover:bg-slate-50">
               <td class="p-3 font-medium text-slate-800">${s.nama}</td>
@@ -854,7 +851,6 @@
       }
     }
 
-    // Tambah Siswa Manual
     document.getElementById('btnModalTambahSiswa').addEventListener('click', async () => {
       let optionsKelasHTML = DAFTAR_KELAS.map(k => `<option value="${k}">${k}</option>`).join('');
 
@@ -889,7 +885,6 @@
       }
     });
 
-    // EDIT SISWA DIRECTLY IN ADMIN PANEL
     window.editSiswa = async (id, currentNama, currentKelas) => {
       let optionsKelasHTML = DAFTAR_KELAS.map(k => `<option value="${k}" ${k === currentKelas ? 'selected' : ''}>${k}</option>`).join('');
 
@@ -945,7 +940,6 @@
       }
     };
 
-    // IMPORT EXCEL SISWA (MENIMPA DATA LAMA / OVERWRITE)
     document.getElementById('btnTriggerExcelSiswa').addEventListener('click', () => document.getElementById('fileExcelSiswa').click());
     document.getElementById('fileExcelSiswa').addEventListener('change', (e) => {
       const file = e.target.files[0];
@@ -977,7 +971,6 @@
 
           Swal.fire({ title: 'Membersihkan & Mengimpor Data Baru...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
           
-          // 1. Hapus Data Lama
           const snapOld = await getDocs(collection(db, "students"));
           const deleteBatchArray = [];
           let deleteBatch = writeBatch(db);
@@ -994,7 +987,6 @@
           deleteBatchArray.push(deleteBatch.commit());
           await Promise.all(deleteBatchArray);
 
-          // 2. Upload Data Baru
           const addBatchArray = [];
           let addBatch = writeBatch(db);
           let count = 0;
@@ -1032,7 +1024,7 @@
       reader.readAsArrayBuffer(file);
     });
 
-    // 2. MATERI HAFALAN MANAGEMENT (CRUD COMPLETE)
+    // 2. MATERI HAFALAN MANAGEMENT
     async function loadAdminDataMateri() {
       const tbody = document.getElementById('tbodyAdminMateri');
       tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center">Memuat Data...</td></tr>';
@@ -1069,7 +1061,6 @@
       }
     }
 
-    // Tambah Materi Manual
     document.getElementById('btnModalTambahMateri').addEventListener('click', async () => {
       let optionsKelasHTML = DAFTAR_KELAS.map(k => `<option value="${k}">${k}</option>`).join('');
 
@@ -1137,7 +1128,6 @@
       }
     });
 
-    // EDIT MATERI DIRECTLY IN ADMIN PANEL
     window.editMateri = async (materiId) => {
       try {
         const snap = await getDocs(query(collection(db, "materi_list")));
@@ -1236,7 +1226,6 @@
       }
     };
 
-    // IMPORT EXCEL MATERI (MENIMPA DATA LAMA / OVERWRITE)
     document.getElementById('btnTriggerExcelMateri').addEventListener('click', () => document.getElementById('fileExcelMateri').click());
     document.getElementById('fileExcelMateri').addEventListener('change', (e) => {
       const file = e.target.files[0];
@@ -1268,7 +1257,6 @@
 
           Swal.fire({ title: 'Membersihkan & Mengimpor Data Baru...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
           
-          // 1. Hapus Data Lama
           const snapOld = await getDocs(collection(db, "materi_list"));
           const deleteBatchArray = [];
           let deleteBatch = writeBatch(db);
@@ -1285,7 +1273,6 @@
           deleteBatchArray.push(deleteBatch.commit());
           await Promise.all(deleteBatchArray);
 
-          // 2. Upload Data Baru
           const addBatchArray = [];
           let addBatch = writeBatch(db);
           let count = 0;
@@ -1342,7 +1329,7 @@
     async function loadAdminRekap() {
       const tbody = document.getElementById('tbodyAdminRekap');
       const kelas = document.getElementById('filterAdminKelas').value;
-      const bulan = document.getElementById('filterAdminBulan').value; // Format YYYY-MM
+      const bulan = document.getElementById('filterAdminBulan').value;
 
       tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center">Memuat Data...</td></tr>';
 
@@ -1394,7 +1381,7 @@
     // EKSPOR EXCEL BULANAN ADMIN FOR ARSIP
     document.getElementById('btnAdminExportExcel').addEventListener('click', async () => {
       const kelas = document.getElementById('filterAdminKelas').value;
-      const bulan = document.getElementById('filterAdminBulan').value; // Format YYYY-MM
+      const bulan = document.getElementById('filterAdminBulan').value;
 
       let constraints = [];
       if (kelas) constraints.push(where("kelas", "==", kelas));
@@ -1412,7 +1399,7 @@
             "nama siswa": r.nama_siswa,
             "kelas": r.kelas,
             "materi hafalan": r.materi_hafalan,
-            "keterangan": r.status_evaluasi
+            "keterangan": r.status_evaluasi === 'Lancar' ? 'Lanjut' : 'Ulang'
           });
         }
       });
@@ -1422,10 +1409,7 @@
         return;
       }
 
-      // Sort Ascending Tanggal & Nama
       dataExcel.sort((a,b) => a.tanggal.localeCompare(b.tanggal) || a["nama siswa"].localeCompare(b["nama siswa"]));
-
-      // Re-index No setelah sorting
       dataExcel.forEach((row, idx) => row.no = idx + 1);
 
       const worksheet = XLSX.utils.json_to_sheet(dataExcel);
@@ -1437,7 +1421,7 @@
       XLSX.writeFile(workbook, `Laporan_Bulanan_Hafalan_${fileKelasLabel}_${fileBulanLabel}.xlsx`);
     });
 
-    // EKSPOR PDF ADMIN (KOP RATA TENGAH & FOOTER RESMI)
+    // EKSPOR PDF ADMIN - STATUS DIUBAH MENJADI LANJUT / ULANG
     document.getElementById('btnAdminExportPDF').addEventListener('click', async () => {
       const kelas = document.getElementById('filterAdminKelas').value;
       const bulan = document.getElementById('filterAdminBulan').value;
@@ -1466,7 +1450,6 @@
       const pageWidth = docPDF.internal.pageSize.getWidth();
       const pageHeight = docPDF.internal.pageSize.getHeight();
 
-      // KOP SURAT RATA TENGAH (CENTER ALIGNED)
       docPDF.setFont("helvetica", "bold");
       docPDF.setFontSize(14);
       docPDF.setTextColor(15, 118, 110);
@@ -1485,13 +1468,14 @@
       docPDF.setDrawColor(15, 118, 110);
       docPDF.line(14, 32, pageWidth - 14, 32);
 
+      // Mapping Keterangan PDF Admin (Lanjut / Ulang)
       const tableBody = records.map((r, i) => [
         i + 1,
         r.tanggal,
         r.kelas,
         r.nama_siswa,
         r.materi_hafalan,
-        r.status_evaluasi
+        r.status_evaluasi === 'Lancar' ? 'Lanjut' : 'Ulang'
       ]);
 
       docPDF.autoTable({
