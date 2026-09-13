@@ -144,7 +144,7 @@
           </select>
         </div>
 
-        <!-- FITUR BARU: TABEL PANDUAN SOAL GURU -->
+        <!-- TABEL PANDUAN SOAL GURU -->
         <div id="boxPanduanSoal" class="hidden border border-emerald-200 rounded-xl overflow-hidden bg-emerald-50/30">
           <div class="bg-emerald-100/60 px-4 py-2.5 flex items-center gap-2 border-b border-emerald-200">
             <span class="text-emerald-800 font-bold text-xs md:text-sm">📖 Daftar Panduan Soal</span>
@@ -217,7 +217,7 @@
           <div class="flex items-center gap-2">
             <input type="file" id="fileExcelSiswa" accept=".xlsx, .csv" class="hidden">
             <button id="btnTriggerExcelSiswa" class="w-full sm:w-auto bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow">
-              📥 Import Excel Siswa
+              📥 Import Excel Siswa (Timpa Data)
             </button>
           </div>
         </div>
@@ -248,7 +248,7 @@
           <div class="flex items-center gap-2">
             <input type="file" id="fileExcelMateri" accept=".xlsx, .csv" class="hidden">
             <button id="btnTriggerExcelMateri" class="w-full sm:w-auto bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow">
-              📥 Import Excel Materi
+              📥 Import Excel Materi (Timpa Data)
             </button>
           </div>
         </div>
@@ -280,8 +280,8 @@
               <select id="filterAdminKelas" class="w-full px-3 py-2 rounded-lg border text-sm"></select>
             </div>
             <div>
-              <label class="block text-xs font-medium text-slate-500 mb-1">Filter Tanggal</label>
-              <input type="date" id="filterAdminTanggal" class="w-full px-3 py-2 rounded-lg border text-sm">
+              <label class="block text-xs font-medium text-slate-500 mb-1">Filter Bulan (Arsip Bulanan Excel)</label>
+              <input type="month" id="filterAdminBulan" class="w-full px-3 py-2 rounded-lg border text-sm">
             </div>
           </div>
           <div class="grid grid-cols-2 gap-3">
@@ -289,7 +289,7 @@
               📄 Ekspor Laporan PDF
             </button>
             <button id="btnAdminExportExcel" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs shadow">
-              📊 Ekspor Laporan Excel
+              📊 Ekspor Laporan Excel Bulanan
             </button>
           </div>
         </div>
@@ -348,7 +348,7 @@
       writeBatch 
     } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
-    // 1. FIREBASE CONFIGURATION (Terhubung ke e-smart-4cafa)
+    // 1. FIREBASE CONFIGURATION
     const firebaseConfig = {
       apiKey: "AIzaSyCk3tvM-oYTkTdbAKZ8KtsFq78B7InxNNg",
       authDomain: "e-smart-4cafa.firebaseapp.com",
@@ -388,6 +388,10 @@
     window.addEventListener('DOMContentLoaded', async () => {
       const today = new Date().toISOString().split('T')[0];
       document.getElementById('inputTanggal').value = today;
+
+      const currentMonth = today.substring(0, 7);
+      const filterBulan = document.getElementById('filterAdminBulan');
+      if (filterBulan) filterBulan.value = currentMonth;
 
       populateKelasDropdowns();
 
@@ -603,14 +607,12 @@
       });
       selectMateri.disabled = false;
 
-      // Trigger pemuatan panduan soal untuk materi rekomendasi
       selectMateri.dispatchEvent(new Event('change'));
 
       document.getElementById('btnEvaluasiLancar').disabled = false;
       document.getElementById('btnEvaluasiUlang').disabled = false;
     });
 
-    // EVENT GANTI MATERI -> TAMPILKAN PANDUAN SOAL DARI FIRESTORE
     document.getElementById('selectMateriGuru').addEventListener('change', (e) => {
       const namaMateri = e.target.value;
       const boxPanduan = document.getElementById('boxPanduanSoal');
@@ -708,7 +710,7 @@
     document.getElementById('btnEvaluasiLancar').addEventListener('click', () => simpanEvaluasi('Lancar'));
     document.getElementById('btnEvaluasiUlang').addEventListener('click', () => simpanEvaluasi('Tidak Lancar'));
 
-    // CETAK LAPORAN PDF (GURU)
+    // CETAK LAPORAN PDF (GURU) - KOP RATA TENGAH & FOOTER RESMI
     document.getElementById('btnGuruCetakPDF').addEventListener('click', async () => {
       const kelas = document.getElementById('filterGuruKelas').value;
       const tanggal = document.getElementById('filterGuruTanggal').value;
@@ -735,13 +737,30 @@
 
         const { jsPDF } = window.jspdf;
         const docPDF = new jsPDF();
+        const pageWidth = docPDF.internal.pageSize.getWidth();
+        const pageHeight = docPDF.internal.pageSize.getHeight();
 
+        // 1. KOP SURAT RATA TENGAH (CENTER ALIGNED)
+        docPDF.setFont("helvetica", "bold");
         docPDF.setFontSize(14);
-        docPDF.text("LAPORAN HAFALAN NUMERASI SISWA", 14, 15);
-        docPDF.setFontSize(10);
-        docPDF.text("MI Salafiyah Wareng", 14, 21);
-        docPDF.text(`Filter: Kelas (${kelas || 'Semua'}), Tanggal (${tanggal || 'Semua'})`, 14, 27);
+        docPDF.setTextColor(15, 118, 110); // Warna Hijau Teal
+        docPDF.text("E Smart - Monitoring Numerasi Siswa", pageWidth / 2, 15, { align: "center" });
 
+        docPDF.setFontSize(12);
+        docPDF.setTextColor(0, 0, 0); // Warna Hitam
+        docPDF.text("MI Salafiyah Wareng", pageWidth / 2, 22, { align: "center" });
+
+        docPDF.setFont("helvetica", "normal");
+        docPDF.setFontSize(10);
+        const strKelasHariTanggal = `Kelas: ${kelas || 'Semua Kelas'} | Hari / Tanggal: ${tanggal || 'Semua Tanggal'}`;
+        docPDF.text(strKelasHariTanggal, pageWidth / 2, 28, { align: "center" });
+
+        // Garis Pembatas Kop Surat
+        docPDF.setLineWidth(0.5);
+        docPDF.setDrawColor(15, 118, 110);
+        docPDF.line(14, 32, pageWidth - 14, 32);
+
+        // 2. TABEL DATA
         const tableBody = records.map((r, i) => [
           i + 1,
           r.tanggal,
@@ -752,11 +771,18 @@
         ]);
 
         docPDF.autoTable({
-          startY: 32,
+          startY: 36,
           head: [['No', 'Tanggal', 'Kelas', 'Nama Siswa', 'Materi Hafalan', 'Status']],
           body: tableBody,
           theme: 'striped',
-          headStyles: { fillColor: [15, 118, 110] }
+          headStyles: { fillColor: [15, 118, 110], halign: 'center' },
+          didDrawPage: (data) => {
+            // FOOTER RESMI DI SETIAP HALAMAN
+            docPDF.setFontSize(8);
+            docPDF.setTextColor(100, 116, 139);
+            docPDF.text("Dokumen Resmi E-Smart MI Salafiyah Wareng - Diunduh Otomatis", 14, pageHeight - 10);
+            docPDF.text(`Halaman ${data.pageNumber}`, pageWidth - 14, pageHeight - 10, { align: "right" });
+          }
         });
 
         Swal.close();
@@ -792,7 +818,7 @@
       });
     });
 
-    // DATA SISWA MANAGEMENT
+    // 1. DATA SISWA MANAGEMENT (CRUD COMPLETE)
     async function loadAdminDataSiswa() {
       const tbody = document.getElementById('tbodyAdminSiswa');
       tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center">Memuat Data...</td></tr>';
@@ -810,13 +836,15 @@
 
         tbody.innerHTML = '';
         list.forEach(s => {
+          const sJson = JSON.stringify(s).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
           tbody.innerHTML += `
             <tr class="hover:bg-slate-50">
               <td class="p-3 font-medium text-slate-800">${s.nama}</td>
               <td class="p-3">${s.kelas}</td>
               <td class="p-3">${s.hafalan_terakhir || '-'} (${s.status_terakhir || '-'})</td>
-              <td class="p-3 text-center">
-                <button onclick="hapusSiswa('${s.id}', '${s.nama}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px]">Hapus</button>
+              <td class="p-3 text-center flex justify-center gap-1">
+                <button onclick="editSiswa('${s.id}', '${s.nama.replace(/'/g, "\\'")}', '${s.kelas}')" class="bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded text-[10px]">Edit</button>
+                <button onclick="hapusSiswa('${s.id}', '${s.nama.replace(/'/g, "\\'")}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px]">Hapus</button>
               </td>
             </tr>
           `;
@@ -826,6 +854,7 @@
       }
     }
 
+    // Tambah Siswa Manual
     document.getElementById('btnModalTambahSiswa').addEventListener('click', async () => {
       let optionsKelasHTML = DAFTAR_KELAS.map(k => `<option value="${k}">${k}</option>`).join('');
 
@@ -860,6 +889,48 @@
       }
     });
 
+    // EDIT SISWA DIRECTLY IN ADMIN PANEL
+    window.editSiswa = async (id, currentNama, currentKelas) => {
+      let optionsKelasHTML = DAFTAR_KELAS.map(k => `<option value="${k}" ${k === currentKelas ? 'selected' : ''}>${k}</option>`).join('');
+
+      const { value: formValues } = await Swal.fire({
+        title: 'Edit Data Siswa',
+        html: `
+          <div class="space-y-3 text-left">
+            <div>
+              <label class="text-xs font-bold text-slate-600">NAMA SISWA</label>
+              <input id="swalEditNamaSiswa" class="swal2-input !m-0 !w-full" value="${currentNama}">
+            </div>
+            <div>
+              <label class="text-xs font-bold text-slate-600">KELAS</label>
+              <select id="swalEditKelasSiswa" class="swal2-input !m-0 !w-full">${optionsKelasHTML}</select>
+            </div>
+          </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Perbarui Data',
+        preConfirm: () => {
+          const nama = document.getElementById('swalEditNamaSiswa').value;
+          const kelas = document.getElementById('swalEditKelasSiswa').value;
+          if (!nama || !kelas) {
+            Swal.showValidationMessage('Seluruh kolom wajib diisi!');
+          }
+          return { nama, kelas };
+        }
+      });
+
+      if (formValues) {
+        Swal.fire({ title: 'Memperbarui...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        await updateDoc(doc(db, "students", id), {
+          nama: formValues.nama,
+          kelas: formValues.kelas
+        });
+        Swal.fire('Berhasil', 'Data siswa berhasil diperbarui.', 'success');
+        loadAdminDataSiswa();
+      }
+    };
+
     window.hapusSiswa = async (id, nama) => {
       const res = await Swal.fire({
         title: 'Konfirmasi Hapus',
@@ -874,6 +945,7 @@
       }
     };
 
+    // IMPORT EXCEL SISWA (MENIMPA DATA LAMA / OVERWRITE)
     document.getElementById('btnTriggerExcelSiswa').addEventListener('click', () => document.getElementById('fileExcelSiswa').click());
     document.getElementById('fileExcelSiswa').addEventListener('change', (e) => {
       const file = e.target.files[0];
@@ -892,9 +964,39 @@
             return;
           }
 
-          Swal.fire({ title: 'Mengimpor Data...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+          const confirm = await Swal.fire({
+            title: 'Konfirmasi Import Siswa',
+            text: 'Proses ini akan MENGHAPUS SELURUH DATA SISWA LAMA dan menggantinya dengan isi file Excel ini!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Timpa Data Lama',
+            cancelButtonText: 'Batal'
+          });
+
+          if (!confirm.isConfirmed) return;
+
+          Swal.fire({ title: 'Membersihkan & Mengimpor Data Baru...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
           
-          const batch = writeBatch(db);
+          // 1. Hapus Data Lama
+          const snapOld = await getDocs(collection(db, "students"));
+          const deleteBatchArray = [];
+          let deleteBatch = writeBatch(db);
+          let delCount = 0;
+
+          snapOld.forEach(d => {
+            deleteBatch.delete(d.ref);
+            delCount++;
+            if (delCount % 400 === 0) {
+              deleteBatchArray.push(deleteBatch.commit());
+              deleteBatch = writeBatch(db);
+            }
+          });
+          deleteBatchArray.push(deleteBatch.commit());
+          await Promise.all(deleteBatchArray);
+
+          // 2. Upload Data Baru
+          const addBatchArray = [];
+          let addBatch = writeBatch(db);
           let count = 0;
 
           sheetData.forEach(row => {
@@ -903,18 +1005,23 @@
 
             if (nama && kelas) {
               const ref = doc(collection(db, "students"));
-              batch.set(ref, {
+              addBatch.set(ref, {
                 nama: String(nama).trim(),
                 kelas: String(kelas).trim(),
                 hafalan_terakhir: "",
                 status_terakhir: ""
               });
               count++;
+              if (count % 400 === 0) {
+                addBatchArray.push(addBatch.commit());
+                addBatch = writeBatch(db);
+              }
             }
           });
+          addBatchArray.push(addBatch.commit());
+          await Promise.all(addBatchArray);
 
-          await batch.commit();
-          Swal.fire('Berhasil', `Berhasil mengimpor ${count} data siswa!`, 'success');
+          Swal.fire('Berhasil', `Data lama dibersihkan. Berhasil mengimpor ${count} data siswa baru!`, 'success');
           loadAdminDataSiswa();
 
         } catch (err) {
@@ -925,7 +1032,7 @@
       reader.readAsArrayBuffer(file);
     });
 
-    // MATERI HAFALAN MANAGEMENT WITH PANDUAN SOAL
+    // 2. MATERI HAFALAN MANAGEMENT (CRUD COMPLETE)
     async function loadAdminDataMateri() {
       const tbody = document.getElementById('tbodyAdminMateri');
       tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center">Memuat Data...</td></tr>';
@@ -950,8 +1057,9 @@
               <td class="p-3">${m.urutan}</td>
               <td class="p-3 font-semibold text-slate-800">${m.nama_materi}</td>
               <td class="p-3 font-bold text-teal-700">${jmlSoal} Soal</td>
-              <td class="p-3 text-center">
-                <button onclick="hapusMateri('${m.id}', '${m.nama_materi}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px]">Hapus</button>
+              <td class="p-3 text-center flex justify-center gap-1">
+                <button onclick="editMateri('${m.id}')" class="bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded text-[10px]">Edit</button>
+                <button onclick="hapusMateri('${m.id}', '${m.nama_materi.replace(/'/g, "\\'")}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px]">Hapus</button>
               </td>
             </tr>
           `;
@@ -961,7 +1069,7 @@
       }
     }
 
-    // Tambah Materi Manual (Ada Input Soal & Jawaban)
+    // Tambah Materi Manual
     document.getElementById('btnModalTambahMateri').addEventListener('click', async () => {
       let optionsKelasHTML = DAFTAR_KELAS.map(k => `<option value="${k}">${k}</option>`).join('');
 
@@ -1029,6 +1137,91 @@
       }
     });
 
+    // EDIT MATERI DIRECTLY IN ADMIN PANEL
+    window.editMateri = async (materiId) => {
+      try {
+        const snap = await getDocs(query(collection(db, "materi_list")));
+        let targetDoc = null;
+        snap.forEach(d => {
+          if (d.id === materiId) targetDoc = { id: d.id, ...d.data() };
+        });
+
+        if (!targetDoc) return;
+
+        let optionsKelasHTML = DAFTAR_KELAS.map(k => `<option value="${k}" ${k === targetDoc.kelas ? 'selected' : ''}>${k}</option>`).join('');
+        
+        const stringSoal = targetDoc.panduan_soal ? targetDoc.panduan_soal.map(p => p.soal).join('\n') : '';
+        const stringJawaban = targetDoc.panduan_soal ? targetDoc.panduan_soal.map(p => p.jawaban).join('\n') : '';
+
+        const { value: formValues } = await Swal.fire({
+          title: 'Edit Data Materi',
+          width: '600px',
+          html: `
+            <div class="space-y-3 text-left">
+              <div>
+                <label class="text-xs font-bold text-slate-600">KELAS</label>
+                <select id="swalEditKelasMateri" class="swal2-input !m-0 !w-full">${optionsKelasHTML}</select>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-600">NAMA MATERI</label>
+                <input id="swalEditNamaMateri" class="swal2-input !m-0 !w-full" value="${targetDoc.nama_materi}">
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-600">URUTAN MATERI</label>
+                <input type="number" id="swalEditUrutanMateri" class="swal2-input !m-0 !w-full" value="${targetDoc.urutan}">
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-600">PANDUAN SOAL (Satu Soal per Baris)</label>
+                <textarea id="swalEditSoalList" class="swal2-textarea !m-0 !w-full text-xs" rows="4">${stringSoal}</textarea>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-slate-600">PANDUAN JAWABAN (Satu Jawaban per Baris)</label>
+                <textarea id="swalEditJawabanList" class="swal2-textarea !m-0 !w-full text-xs" rows="4">${stringJawaban}</textarea>
+              </div>
+            </div>
+          `,
+          focusConfirm: false,
+          showCancelButton: true,
+          confirmButtonText: 'Perbarui Data',
+          preConfirm: () => {
+            const kelas = document.getElementById('swalEditKelasMateri').value;
+            const nama_materi = document.getElementById('swalEditNamaMateri').value;
+            const urutan = document.getElementById('swalEditUrutanMateri').value;
+            const soalRaw = document.getElementById('swalEditSoalList').value;
+            const jawabanRaw = document.getElementById('swalEditJawabanList').value;
+
+            if (!kelas || !nama_materi || !urutan) {
+              Swal.showValidationMessage('Kelas, Nama Materi, dan Urutan Wajib Diisi!');
+              return false;
+            }
+
+            const arraySoal = soalRaw.split('\n').map(s => s.trim()).filter(s => s !== '');
+            const arrayJawaban = jawabanRaw.split('\n').map(j => j.trim()).filter(j => j !== '');
+
+            let panduan_soal = [];
+            for (let i = 0; i < arraySoal.length; i++) {
+              panduan_soal.push({
+                soal: arraySoal[i],
+                jawaban: arrayJawaban[i] || '-'
+              });
+            }
+
+            return { kelas, nama_materi, urutan: Number(urutan), panduan_soal };
+          }
+        });
+
+        if (formValues) {
+          Swal.fire({ title: 'Memperbarui...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+          await updateDoc(doc(db, "materi_list", materiId), formValues);
+          Swal.fire('Berhasil', 'Data materi berhasil diperbarui.', 'success');
+          loadAdminDataMateri();
+        }
+
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
     window.hapusMateri = async (id, nama) => {
       const res = await Swal.fire({
         title: 'Konfirmasi Hapus',
@@ -1043,7 +1236,7 @@
       }
     };
 
-    // Import Excel Materi (Dukungan Kolom Soal & Jawaban)
+    // IMPORT EXCEL MATERI (MENIMPA DATA LAMA / OVERWRITE)
     document.getElementById('btnTriggerExcelMateri').addEventListener('click', () => document.getElementById('fileExcelMateri').click());
     document.getElementById('fileExcelMateri').addEventListener('change', (e) => {
       const file = e.target.files[0];
@@ -1062,9 +1255,39 @@
             return;
           }
 
-          Swal.fire({ title: 'Mengimpor Data...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+          const confirm = await Swal.fire({
+            title: 'Konfirmasi Import Materi',
+            text: 'Proses ini akan MENGHAPUS SELURUH DATA MATERI LAMA dan menggantinya dengan isi file Excel ini!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Timpa Data Lama',
+            cancelButtonText: 'Batal'
+          });
+
+          if (!confirm.isConfirmed) return;
+
+          Swal.fire({ title: 'Membersihkan & Mengimpor Data Baru...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
           
-          const batch = writeBatch(db);
+          // 1. Hapus Data Lama
+          const snapOld = await getDocs(collection(db, "materi_list"));
+          const deleteBatchArray = [];
+          let deleteBatch = writeBatch(db);
+          let delCount = 0;
+
+          snapOld.forEach(d => {
+            deleteBatch.delete(d.ref);
+            delCount++;
+            if (delCount % 400 === 0) {
+              deleteBatchArray.push(deleteBatch.commit());
+              deleteBatch = writeBatch(db);
+            }
+          });
+          deleteBatchArray.push(deleteBatch.commit());
+          await Promise.all(deleteBatchArray);
+
+          // 2. Upload Data Baru
+          const addBatchArray = [];
+          let addBatch = writeBatch(db);
           let count = 0;
 
           sheetData.forEach(row => {
@@ -1087,18 +1310,23 @@
               }
 
               const ref = doc(collection(db, "materi_list"));
-              batch.set(ref, {
+              addBatch.set(ref, {
                 nama_materi: String(nama_materi).trim(),
                 kelas: String(kelas).trim(),
                 urutan: Number(urutan),
                 panduan_soal: panduan_soal
               });
               count++;
+              if (count % 400 === 0) {
+                addBatchArray.push(addBatch.commit());
+                addBatch = writeBatch(db);
+              }
             }
           });
+          addBatchArray.push(addBatch.commit());
+          await Promise.all(addBatchArray);
 
-          await batch.commit();
-          Swal.fire('Berhasil', `Berhasil mengimpor ${count} data materi!`, 'success');
+          Swal.fire('Berhasil', `Data lama dibersihkan. Berhasil mengimpor ${count} data materi baru!`, 'success');
           loadAdminDataMateri();
 
         } catch (err) {
@@ -1110,23 +1338,27 @@
     });
 
 
-    // REKAPITULASI & EKSPOR ADMIN
+    // 3. REKAPITULASI & EKSPOR ADMIN
     async function loadAdminRekap() {
       const tbody = document.getElementById('tbodyAdminRekap');
       const kelas = document.getElementById('filterAdminKelas').value;
-      const tanggal = document.getElementById('filterAdminTanggal').value;
+      const bulan = document.getElementById('filterAdminBulan').value; // Format YYYY-MM
 
       tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center">Memuat Data...</td></tr>';
 
       try {
         let constraints = [];
         if (kelas) constraints.push(where("kelas", "==", kelas));
-        if (tanggal) constraints.push(where("tanggal", "==", tanggal));
 
         const q = query(collection(db, "hafalan_records"), ...constraints);
         const snap = await getDocs(q);
         let list = [];
-        snap.forEach(d => list.push(d.data()));
+        snap.forEach(d => {
+          const item = d.data();
+          if (!bulan || (item.tanggal && item.tanggal.startsWith(bulan))) {
+            list.push(item);
+          }
+        });
 
         list.sort((a,b) => b.tanggal.localeCompare(a.tanggal));
 
@@ -1157,15 +1389,15 @@
     }
 
     document.getElementById('filterAdminKelas').addEventListener('change', loadAdminRekap);
-    document.getElementById('filterAdminTanggal').addEventListener('change', loadAdminRekap);
+    document.getElementById('filterAdminBulan').addEventListener('change', loadAdminRekap);
 
+    // EKSPOR EXCEL BULANAN ADMIN FOR ARSIP
     document.getElementById('btnAdminExportExcel').addEventListener('click', async () => {
       const kelas = document.getElementById('filterAdminKelas').value;
-      const tanggal = document.getElementById('filterAdminTanggal').value;
+      const bulan = document.getElementById('filterAdminBulan').value; // Format YYYY-MM
 
       let constraints = [];
       if (kelas) constraints.push(where("kelas", "==", kelas));
-      if (tanggal) constraints.push(where("tanggal", "==", tanggal));
 
       const snap = await getDocs(query(collection(db, "hafalan_records"), ...constraints));
       let dataExcel = [];
@@ -1173,51 +1405,85 @@
       let no = 1;
       snap.forEach(d => {
         const r = d.data();
-        dataExcel.push({
-          "No": no++,
-          "Tanggal": r.tanggal,
-          "Kelas": r.kelas,
-          "Nama Siswa": r.nama_siswa,
-          "Materi Hafalan": r.materi_hafalan,
-          "Keterangan": r.status_evaluasi
-        });
+        if (!bulan || (r.tanggal && r.tanggal.startsWith(bulan))) {
+          dataExcel.push({
+            "no": no++,
+            "tanggal": r.tanggal,
+            "nama siswa": r.nama_siswa,
+            "kelas": r.kelas,
+            "materi hafalan": r.materi_hafalan,
+            "keterangan": r.status_evaluasi
+          });
+        }
       });
 
       if (dataExcel.length === 0) {
-        Swal.fire('Info', 'Tidak ada data untuk diekspor.', 'info');
+        Swal.fire('Info', 'Tidak ada data hafalan pada bulan yang dipilih.', 'info');
         return;
       }
 
+      // Sort Ascending Tanggal & Nama
+      dataExcel.sort((a,b) => a.tanggal.localeCompare(b.tanggal) || a["nama siswa"].localeCompare(b["nama siswa"]));
+
+      // Re-index No setelah sorting
+      dataExcel.forEach((row, idx) => row.no = idx + 1);
+
       const worksheet = XLSX.utils.json_to_sheet(dataExcel);
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Hafalan");
-      XLSX.writeFile(workbook, `Rekap_Hafalan_E-Smart_${new Date().toISOString().split('T')[0]}.xlsx`);
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Arsip Laporan Bulanan");
+      
+      const fileBulanLabel = bulan || 'Semua_Bulan';
+      const fileKelasLabel = kelas || 'Semua_Kelas';
+      XLSX.writeFile(workbook, `Laporan_Bulanan_Hafalan_${fileKelasLabel}_${fileBulanLabel}.xlsx`);
     });
 
+    // EKSPOR PDF ADMIN (KOP RATA TENGAH & FOOTER RESMI)
     document.getElementById('btnAdminExportPDF').addEventListener('click', async () => {
       const kelas = document.getElementById('filterAdminKelas').value;
-      const tanggal = document.getElementById('filterAdminTanggal').value;
+      const bulan = document.getElementById('filterAdminBulan').value;
 
       let constraints = [];
       if (kelas) constraints.push(where("kelas", "==", kelas));
-      if (tanggal) constraints.push(where("tanggal", "==", tanggal));
 
       const snap = await getDocs(query(collection(db, "hafalan_records"), ...constraints));
       let records = [];
-      snap.forEach(d => records.push(d.data()));
+      snap.forEach(d => {
+        const r = d.data();
+        if (!bulan || (r.tanggal && r.tanggal.startsWith(bulan))) {
+          records.push(r);
+        }
+      });
 
       if (records.length === 0) {
         Swal.fire('Info', 'Tidak ada data untuk diekspor.', 'info');
         return;
       }
 
+      records.sort((a,b) => b.tanggal.localeCompare(a.tanggal));
+
       const { jsPDF } = window.jspdf;
       const docPDF = new jsPDF();
+      const pageWidth = docPDF.internal.pageSize.getWidth();
+      const pageHeight = docPDF.internal.pageSize.getHeight();
 
+      // KOP SURAT RATA TENGAH (CENTER ALIGNED)
+      docPDF.setFont("helvetica", "bold");
       docPDF.setFontSize(14);
-      docPDF.text("REKAPITULASI HAFALAN NUMERASI (ADMIN)", 14, 15);
+      docPDF.setTextColor(15, 118, 110);
+      docPDF.text("E Smart - Monitoring Numerasi Siswa", pageWidth / 2, 15, { align: "center" });
+
+      docPDF.setFontSize(12);
+      docPDF.setTextColor(0, 0, 0);
+      docPDF.text("MI Salafiyah Wareng", pageWidth / 2, 22, { align: "center" });
+
+      docPDF.setFont("helvetica", "normal");
       docPDF.setFontSize(10);
-      docPDF.text("MI Salafiyah Wareng", 14, 21);
+      const strSub = `Kelas: ${kelas || 'Semua Kelas'} | Bulan: ${bulan || 'Semua Bulan'}`;
+      docPDF.text(strSub, pageWidth / 2, 28, { align: "center" });
+
+      docPDF.setLineWidth(0.5);
+      docPDF.setDrawColor(15, 118, 110);
+      docPDF.line(14, 32, pageWidth - 14, 32);
 
       const tableBody = records.map((r, i) => [
         i + 1,
@@ -1229,14 +1495,20 @@
       ]);
 
       docPDF.autoTable({
-        startY: 28,
+        startY: 36,
         head: [['No', 'Tanggal', 'Kelas', 'Nama Siswa', 'Materi Hafalan', 'Keterangan']],
         body: tableBody,
         theme: 'grid',
-        headStyles: { fillColor: [30, 41, 59] }
+        headStyles: { fillColor: [30, 41, 59], halign: 'center' },
+        didDrawPage: (data) => {
+          docPDF.setFontSize(8);
+          docPDF.setTextColor(100, 116, 139);
+          docPDF.text("Dokumen Resmi E-Smart MI Salafiyah Wareng - Rekapitulasi Administrator", 14, pageHeight - 10);
+          docPDF.text(`Halaman ${data.pageNumber}`, pageWidth - 14, pageHeight - 10, { align: "right" });
+        }
       });
 
-      docPDF.save(`Rekap_Admin_${new Date().toISOString().split('T')[0]}.pdf`);
+      docPDF.save(`Rekap_Admin_${bulan || 'Semua'}_${kelas || 'Semua'}.pdf`);
     });
 
   </script>
