@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>E-Smart - MI Salafiyah Wareng</title>
   
+  <!-- PWA Manifest & Theme Color -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f766e">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3588/3588658.png">
+
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- SweetAlert2 CDN -->
@@ -14,6 +19,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <!-- SheetJS (xlsx) CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- Chart.js CDN (Grafik Statistics) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
     body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; }
@@ -33,10 +40,13 @@
         </div>
       </div>
       
-      <!-- User Info & Logout -->
+      <!-- Tombol Install PWA & User Info -->
       <div id="userInfoHeader" class="hidden flex items-center space-x-2 flex-shrink-0">
+        <button id="btnInstallPWA" class="hidden bg-amber-400 hover:bg-amber-500 text-slate-900 text-xs px-2.5 py-1.5 rounded-lg font-bold transition flex items-center gap-1 shadow">
+          <span>📲 Install App</span>
+        </button>
         <div class="text-right text-xs md:text-sm">
-          <p id="userEmailText" class="font-semibold max-w-[120px] sm:max-w-none truncate"></p>
+          <p id="userEmailText" class="font-semibold max-w-[100px] sm:max-w-none truncate"></p>
           <span id="userRoleBadge" class="inline-block bg-teal-800 text-teal-100 text-[10px] px-2 py-0.5 rounded-full font-medium"></span>
         </div>
         <button id="btnLogout" class="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1 shadow">
@@ -125,8 +135,14 @@
           </select>
         </div>
 
-        <!-- Info Card Rekomendasi Hafalan -->
-        <div id="cardInfoHafalan" class="hidden bg-slate-50 border border-teal-100 p-4 rounded-xl space-y-2">
+        <!-- Info Card Rekomendasi Hafalan & Badge Prestasi -->
+        <div id="cardInfoHafalan" class="hidden bg-slate-50 border border-teal-100 p-4 rounded-xl space-y-3">
+          <!-- BADGE PRESTASI SISWA -->
+          <div id="boxBadgePrestasi" class="hidden flex items-center gap-2 bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-900 px-3 py-1.5 rounded-lg shadow-sm font-bold text-xs">
+            <span class="text-base">🌟</span>
+            <span id="textBadgePrestasi">Bintang Numerasi (3x Lancar Berturut-turut!)</span>
+          </div>
+
           <div class="flex justify-between items-start">
             <span class="text-xs font-bold text-slate-500 uppercase">Riwayat Terakhir</span>
             <span id="badgeStatusTerakhir" class="text-[10px] font-bold px-2 py-0.5 rounded-full"></span>
@@ -201,6 +217,27 @@
         <p class="text-xs text-slate-300">Pengelolaan Master Data Siswa, Materi & Rekapitulasi</p>
       </div>
 
+      <!-- FITUR BARU: DASHBOARD GRAFIK STATISTIK ADMINISTRATOR -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm col-span-1 md:col-span-2 space-y-2">
+          <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Statistik Evaluasi Per Kelas</h3>
+          <div class="h-52">
+            <canvas id="chartEvaluasiKelas"></canvas>
+          </div>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm col-span-1 space-y-2 flex flex-col justify-between">
+          <div>
+            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Proporsi Kelancaran Bulan Ini</h3>
+            <div class="h-44 flex justify-center items-center">
+              <canvas id="chartPieKelancaran"></canvas>
+            </div>
+          </div>
+          <div class="text-center">
+            <span id="textTotalSetoranBulan" class="text-xs font-bold text-teal-700">Total Setoran: 0</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Tabs Navigation -->
       <div class="flex border-b border-slate-200 space-x-4">
         <button id="tabBtnSiswa" class="py-2 px-4 border-b-2 border-teal-600 font-bold text-teal-700 text-sm">Data Siswa</button>
@@ -220,6 +257,11 @@
               📥 Import Excel Siswa (Timpa Data)
             </button>
           </div>
+        </div>
+
+        <!-- SEARCH BAR PRESISI DATA SISWA -->
+        <div class="relative">
+          <input type="text" id="searchAdminSiswa" class="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:outline-none text-xs" placeholder="🔍 Cari nama atau kelas siswa...">
         </div>
 
         <div class="bg-white rounded-xl border border-slate-200 overflow-x-auto">
@@ -251,6 +293,11 @@
               📥 Import Excel Materi (Timpa Data)
             </button>
           </div>
+        </div>
+
+        <!-- SEARCH BAR PRESISI DATA MATERI -->
+        <div class="relative">
+          <input type="text" id="searchAdminMateri" class="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:outline-none text-xs" placeholder="🔍 Cari materi atau kelas...">
         </div>
 
         <div class="bg-white rounded-xl border border-slate-200 overflow-x-auto">
@@ -345,6 +392,7 @@
       deleteDoc, 
       query, 
       where, 
+      limit,
       writeBatch 
     } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
 
@@ -376,6 +424,36 @@
     let currentUserRole = "guru";
     let selectedStudentData = null;
     let currentMateriList = [];
+    let cacheSiswaAdmin = [];
+    let cacheMateriAdmin = [];
+    let chartBarInstance = null;
+    let chartPieInstance = null;
+
+    // Registrasi PWA Service Worker & Install Prompt
+    let deferredPrompt;
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Load Err:', err));
+      });
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const btnInstall = document.getElementById('btnInstallPWA');
+      if (btnInstall) btnInstall.classList.remove('hidden');
+    });
+
+    document.getElementById('btnInstallPWA').addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          document.getElementById('btnInstallPWA').classList.add('hidden');
+        }
+        deferredPrompt = null;
+      }
+    });
 
     const loadingApp = document.getElementById('loadingApp');
     const pageLogin = document.getElementById('pageLogin');
@@ -440,6 +518,7 @@
           pageGuru.classList.add('hidden');
           pageAdmin.classList.remove('hidden');
           loadAdminDataSiswa();
+          initAdminDashboardCharts();
         } else {
           pageAdmin.classList.add('hidden');
           pageGuru.classList.remove('hidden');
@@ -509,12 +588,14 @@
       const selectMateri = document.getElementById('selectMateriGuru');
       const cardInfo = document.getElementById('cardInfoHafalan');
       const boxPanduan = document.getElementById('boxPanduanSoal');
+      const boxBadge = document.getElementById('boxBadgePrestasi');
       
       selectSiswa.innerHTML = '<option value="">-- Memuat Siswa... --</option>';
       selectSiswa.disabled = true;
       selectMateri.disabled = true;
       cardInfo.classList.add('hidden');
       boxPanduan.classList.add('hidden');
+      boxBadge.classList.add('hidden');
       resetEvaluasiButtons();
 
       if (!kelas) return;
@@ -544,16 +625,18 @@
       }
     });
 
-    document.getElementById('selectSiswaGuru').addEventListener('change', (e) => {
+    document.getElementById('selectSiswaGuru').addEventListener('change', async (e) => {
       const select = e.target;
       const selectedOption = select.options[select.selectedIndex];
       const selectMateri = document.getElementById('selectMateriGuru');
       const cardInfo = document.getElementById('cardInfoHafalan');
       const boxPanduan = document.getElementById('boxPanduanSoal');
+      const boxBadge = document.getElementById('boxBadgePrestasi');
 
       if (!select.value) {
         cardInfo.classList.add('hidden');
         boxPanduan.classList.add('hidden');
+        boxBadge.classList.add('hidden');
         selectMateri.disabled = true;
         resetEvaluasiButtons();
         return;
@@ -562,7 +645,8 @@
       const nama = selectedOption.getAttribute('data-nama');
       const hafalanTerakhir = selectedOption.getAttribute('data-last') || 'Belum Ada';
       const statusTerakhir = selectedOption.getAttribute('data-status') || '-';
-      
+      const kelas = document.getElementById('selectKelasGuru').value;
+
       selectedStudentData = { id: select.value, nama, hafalanTerakhir, statusTerakhir };
 
       document.getElementById('textHafalanTerakhir').textContent = hafalanTerakhir;
@@ -574,6 +658,35 @@
         badgeStatus.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800";
       } else {
         badgeStatus.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600";
+      }
+
+      // FITUR BARU: CEK STREAK / BADGE PRESTASI SISWA
+      try {
+        const qHistory = query(
+          collection(db, "hafalan_records"),
+          where("nama_siswa", "==", nama),
+          where("kelas", "==", kelas),
+          limit(5)
+        );
+        const snapHist = await getDocs(qHistory);
+        let recs = [];
+        snapHist.forEach(d => recs.push(d.data()));
+        recs.sort((a,b) => b.tanggal.localeCompare(a.tanggal));
+
+        let consecutiveLancar = 0;
+        for (let r of recs) {
+          if (r.status_evaluasi === 'Lancar') consecutiveLancar++;
+          else break;
+        }
+
+        if (consecutiveLancar >= 3) {
+          document.getElementById('textBadgePrestasi').textContent = `Bintang Numerasi (${consecutiveLancar}x Lancar Berturut-turut!)`;
+          boxBadge.classList.remove('hidden');
+        } else {
+          boxBadge.classList.add('hidden');
+        }
+      } catch (err) {
+        console.error("Streak check error:", err);
       }
 
       let targetRekomendasi = "";
@@ -710,7 +823,7 @@
     document.getElementById('btnEvaluasiLancar').addEventListener('click', () => simpanEvaluasi('Lancar'));
     document.getElementById('btnEvaluasiUlang').addEventListener('click', () => simpanEvaluasi('Tidak Lancar'));
 
-    // CETAK LAPORAN PDF (GURU) - STATUS DIUBAH MENJADI LANJUT / ULANG
+    // CETAK LAPORAN PDF GURU
     document.getElementById('btnGuruCetakPDF').addEventListener('click', async () => {
       const kelas = document.getElementById('filterGuruKelas').value;
       const tanggal = document.getElementById('filterGuruTanggal').value;
@@ -740,7 +853,6 @@
         const pageWidth = docPDF.internal.pageSize.getWidth();
         const pageHeight = docPDF.internal.pageSize.getHeight();
 
-        // 1. KOP SURAT RATA TENGAH
         docPDF.setFont("helvetica", "bold");
         docPDF.setFontSize(14);
         docPDF.setTextColor(15, 118, 110);
@@ -759,7 +871,6 @@
         docPDF.setDrawColor(15, 118, 110);
         docPDF.line(14, 32, pageWidth - 14, 32);
 
-        // 2. TABEL DATA (Keterangan diubah menjadi Lanjut / Ulang)
         const tableBody = records.map((r, i) => [
           i + 1,
           r.tanggal,
@@ -795,6 +906,82 @@
 
     // --- LOGIKA HALAMAN ADMINISTRATOR ---
 
+    // FITUR BARU: INITIALIZE DASHBOARD CHARTS (CHART.JS)
+    async function initAdminDashboardCharts() {
+      try {
+        const snap = await getDocs(collection(db, "hafalan_records"));
+        let records = [];
+        snap.forEach(d => records.push(d.data()));
+
+        const currentMonth = new Date().toISOString().substring(0, 7);
+        const recordsBulanIni = records.filter(r => r.tanggal && r.tanggal.startsWith(currentMonth));
+
+        // 1. Data Grafik Batang Per Kelas
+        const kelasCounts = {};
+        DAFTAR_KELAS.forEach(k => kelasCounts[k] = { lancar: 0, ulang: 0 });
+
+        recordsBulanIni.forEach(r => {
+          if (kelasCounts[r.kelas]) {
+            if (r.status_evaluasi === 'Lancar') kelasCounts[r.kelas].lancar++;
+            else kelasCounts[r.kelas].ulang++;
+          }
+        });
+
+        const labelsKelas = DAFTAR_KELAS.map(k => k.split(' ')[0] + ' ' + k.split(' ')[1]);
+        const dataLancar = DAFTAR_KELAS.map(k => kelasCounts[k].lancar);
+        const dataUlang = DAFTAR_KELAS.map(k => kelasCounts[k].ulang);
+
+        const ctxBar = document.getElementById('chartEvaluasiKelas').getContext('2d');
+        if (chartBarInstance) chartBarInstance.destroy();
+
+        chartBarInstance = new Chart(ctxBar, {
+          type: 'bar',
+          data: {
+            labels: labelsKelas,
+            datasets: [
+              { label: 'Lancar (Lanjut)', data: dataLancar, backgroundColor: '#10b981' },
+              { label: 'Tidak Lancar (Ulang)', data: dataUlang, backgroundColor: '#f59e0b' }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 } } } },
+            scales: { x: { ticks: { font: { size: 9 } } }, y: { beginAtZero: true, ticks: { precision: 0 } } }
+          }
+        });
+
+        // 2. Data Pie Chart Proporsi Bulan Ini
+        let totalLancar = recordsBulanIni.filter(r => r.status_evaluasi === 'Lancar').length;
+        let totalUlang = recordsBulanIni.filter(r => r.status_evaluasi === 'Tidak Lancar').length;
+
+        document.getElementById('textTotalSetoranBulan').textContent = `Total Setoran Bulan Ini: ${recordsBulanIni.length}`;
+
+        const ctxPie = document.getElementById('chartPieKelancaran').getContext('2d');
+        if (chartPieInstance) chartPieInstance.destroy();
+
+        chartPieInstance = new Chart(ctxPie, {
+          type: 'doughnut',
+          data: {
+            labels: ['Lancar', 'Ulang'],
+            datasets: [{
+              data: [totalLancar, totalUlang],
+              backgroundColor: ['#10b981', '#f59e0b']
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } }
+          }
+        });
+
+      } catch (err) {
+        console.error("Chart load error:", err);
+      }
+    }
+
+
     const tabBtns = [
       { btn: document.getElementById('tabBtnSiswa'), content: document.getElementById('tabContentSiswa') },
       { btn: document.getElementById('tabBtnMateri'), content: document.getElementById('tabContentMateri') },
@@ -816,40 +1003,54 @@
       });
     });
 
-    // 1. DATA SISWA MANAGEMENT
+    // 1. DATA SISWA MANAGEMENT (WITH SEARCH BAR & CACHE)
     async function loadAdminDataSiswa() {
       const tbody = document.getElementById('tbodyAdminSiswa');
       tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center">Memuat Data...</td></tr>';
 
       try {
         const snap = await getDocs(collection(db, "students"));
-        let list = [];
-        snap.forEach(d => list.push({ id: d.id, ...d.data() }));
-        list.sort((a,b) => a.kelas.localeCompare(b.kelas) || a.nama.localeCompare(b.nama));
+        cacheSiswaAdmin = [];
+        snap.forEach(d => cacheSiswaAdmin.push({ id: d.id, ...d.data() }));
+        cacheSiswaAdmin.sort((a,b) => a.kelas.localeCompare(b.kelas) || a.nama.localeCompare(b.nama));
 
-        if (list.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center">Data siswa masih kosong.</td></tr>';
-          return;
-        }
-
-        tbody.innerHTML = '';
-        list.forEach(s => {
-          tbody.innerHTML += `
-            <tr class="hover:bg-slate-50">
-              <td class="p-3 font-medium text-slate-800">${s.nama}</td>
-              <td class="p-3">${s.kelas}</td>
-              <td class="p-3">${s.hafalan_terakhir || '-'} (${s.status_terakhir || '-'})</td>
-              <td class="p-3 text-center flex justify-center gap-1">
-                <button onclick="editSiswa('${s.id}', '${s.nama.replace(/'/g, "\\'")}', '${s.kelas}')" class="bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded text-[10px]">Edit</button>
-                <button onclick="hapusSiswa('${s.id}', '${s.nama.replace(/'/g, "\\'")}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px]">Hapus</button>
-              </td>
-            </tr>
-          `;
-        });
+        renderTableSiswa(cacheSiswaAdmin);
       } catch (err) {
         console.error(err);
       }
     }
+
+    function renderTableSiswa(list) {
+      const tbody = document.getElementById('tbodyAdminSiswa');
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center">Data siswa tidak ditemukan.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = '';
+      list.forEach(s => {
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50">
+            <td class="p-3 font-medium text-slate-800">${s.nama}</td>
+            <td class="p-3">${s.kelas}</td>
+            <td class="p-3">${s.hafalan_terakhir || '-'} (${s.status_terakhir || '-'})</td>
+            <td class="p-3 text-center flex justify-center gap-1">
+              <button onclick="editSiswa('${s.id}', '${s.nama.replace(/'/g, "\\'")}', '${s.kelas}')" class="bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded text-[10px]">Edit</button>
+              <button onclick="hapusSiswa('${s.id}', '${s.nama.replace(/'/g, "\\'")}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px]">Hapus</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    // SEARCH LISTENER SISWA
+    document.getElementById('searchAdminSiswa').addEventListener('input', (e) => {
+      const keyword = e.target.value.toLowerCase().trim();
+      const filtered = cacheSiswaAdmin.filter(s => 
+        s.nama.toLowerCase().includes(keyword) || s.kelas.toLowerCase().includes(keyword)
+      );
+      renderTableSiswa(filtered);
+    });
 
     document.getElementById('btnModalTambahSiswa').addEventListener('click', async () => {
       let optionsKelasHTML = DAFTAR_KELAS.map(k => `<option value="${k}">${k}</option>`).join('');
@@ -1024,42 +1225,56 @@
       reader.readAsArrayBuffer(file);
     });
 
-    // 2. MATERI HAFALAN MANAGEMENT
+    // 2. MATERI HAFALAN MANAGEMENT (WITH SEARCH BAR & CACHE)
     async function loadAdminDataMateri() {
       const tbody = document.getElementById('tbodyAdminMateri');
       tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center">Memuat Data...</td></tr>';
 
       try {
         const snap = await getDocs(collection(db, "materi_list"));
-        let list = [];
-        snap.forEach(d => list.push({ id: d.id, ...d.data() }));
-        list.sort((a,b) => a.kelas.localeCompare(b.kelas) || Number(a.urutan) - Number(b.urutan));
+        cacheMateriAdmin = [];
+        snap.forEach(d => cacheMateriAdmin.push({ id: d.id, ...d.data() }));
+        cacheMateriAdmin.sort((a,b) => a.kelas.localeCompare(b.kelas) || Number(a.urutan) - Number(b.urutan));
 
-        if (list.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center">Data materi masih kosong.</td></tr>';
-          return;
-        }
-
-        tbody.innerHTML = '';
-        list.forEach(m => {
-          const jmlSoal = m.panduan_soal ? m.panduan_soal.length : 0;
-          tbody.innerHTML += `
-            <tr class="hover:bg-slate-50">
-              <td class="p-3 font-medium">${m.kelas}</td>
-              <td class="p-3">${m.urutan}</td>
-              <td class="p-3 font-semibold text-slate-800">${m.nama_materi}</td>
-              <td class="p-3 font-bold text-teal-700">${jmlSoal} Soal</td>
-              <td class="p-3 text-center flex justify-center gap-1">
-                <button onclick="editMateri('${m.id}')" class="bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded text-[10px]">Edit</button>
-                <button onclick="hapusMateri('${m.id}', '${m.nama_materi.replace(/'/g, "\\'")}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px]">Hapus</button>
-              </td>
-            </tr>
-          `;
-        });
+        renderTableMateri(cacheMateriAdmin);
       } catch (err) {
         console.error(err);
       }
     }
+
+    function renderTableMateri(list) {
+      const tbody = document.getElementById('tbodyAdminMateri');
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center">Data materi tidak ditemukan.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = '';
+      list.forEach(m => {
+        const jmlSoal = m.panduan_soal ? m.panduan_soal.length : 0;
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50">
+            <td class="p-3 font-medium">${m.kelas}</td>
+            <td class="p-3">${m.urutan}</td>
+            <td class="p-3 font-semibold text-slate-800">${m.nama_materi}</td>
+            <td class="p-3 font-bold text-teal-700">${jmlSoal} Soal</td>
+            <td class="p-3 text-center flex justify-center gap-1">
+              <button onclick="editMateri('${m.id}')" class="bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded text-[10px]">Edit</button>
+              <button onclick="hapusMateri('${m.id}', '${m.nama_materi.replace(/'/g, "\\'")}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px]">Hapus</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    // SEARCH LISTENER MATERI
+    document.getElementById('searchAdminMateri').addEventListener('input', (e) => {
+      const keyword = e.target.value.toLowerCase().trim();
+      const filtered = cacheMateriAdmin.filter(m => 
+        m.nama_materi.toLowerCase().includes(keyword) || m.kelas.toLowerCase().includes(keyword)
+      );
+      renderTableMateri(filtered);
+    });
 
     document.getElementById('btnModalTambahMateri').addEventListener('click', async () => {
       let optionsKelasHTML = DAFTAR_KELAS.map(k => `<option value="${k}">${k}</option>`).join('');
@@ -1421,7 +1636,7 @@
       XLSX.writeFile(workbook, `Laporan_Bulanan_Hafalan_${fileKelasLabel}_${fileBulanLabel}.xlsx`);
     });
 
-    // EKSPOR PDF ADMIN - STATUS DIUBAH MENJADI LANJUT / ULANG
+    // EKSPOR PDF ADMIN
     document.getElementById('btnAdminExportPDF').addEventListener('click', async () => {
       const kelas = document.getElementById('filterAdminKelas').value;
       const bulan = document.getElementById('filterAdminBulan').value;
@@ -1468,7 +1683,6 @@
       docPDF.setDrawColor(15, 118, 110);
       docPDF.line(14, 32, pageWidth - 14, 32);
 
-      // Mapping Keterangan PDF Admin (Lanjut / Ulang)
       const tableBody = records.map((r, i) => [
         i + 1,
         r.tanggal,
